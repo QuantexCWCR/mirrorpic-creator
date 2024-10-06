@@ -1,5 +1,6 @@
 import os
 import tkinter
+import datetime
 from PIL import Image,ImageTk
 
 input("使用方法:将希望用于镜像的照片置于本文件同级目录，完成后按enter")
@@ -14,7 +15,6 @@ while True:
     except ValueError:
         print("输入有误")
 current_dir=os.path.dirname(os.path.abspath(__file__))
-#print(current_dir)
 for root, dirs, files in os.walk(current_dir):
     if root == current_dir:
         for file in files:
@@ -68,9 +68,7 @@ try:
     root.mainloop()
 
     croppedimage=newimage.crop((clickx,clicky,releasex,releasey))
-    #croppedimage.show()
 
-    #print(original_dir)
     print("文件处理中...")
     flipped=croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
     output=Image.new('RGB',(croppedimage.width*2,croppedimage.height))
@@ -80,12 +78,19 @@ try:
     elif mode==2:
         output.paste(flipped,(0, 0))
         output.paste(croppedimage,(croppedimage.width, 0))
+    time=datetime.datetime.now()
+    formatted_time=time.strftime("%Y%m%d%H%M%S")
     os.makedirs(f"{current_dir}\outputs",exist_ok=True)
-    output.save(f"{current_dir}\outputs\{original_name}_output{extension}")
+    output.save(f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
     os.makedirs(f"{current_dir}\original_images", exist_ok=True)
     os.rename(original_dir,f"{current_dir}\original_images\{original_name}{extension}")
-    print(f"已将输出存储为{current_dir}\outputs\{original_name}_output{extension}")
+    print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
     print(f"已将原图移动至{current_dir}\original_images")
 except NameError:
     print("未找到照片或未进行裁剪")
+except FileExistsError:
+    os.rename(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
+    print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
+    print(f"已将原图移动至{current_dir}\original_images")
+    print(f"注意：由于{current_dir}\original_images文件夹中已存在同名文件，故将原图重命名为{original_name}_{formatted_time}{extension}后存储")
 input("按enter以退出...")
