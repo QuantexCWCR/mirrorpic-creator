@@ -16,6 +16,10 @@ pip install Pillow
 ```
 安装即可
 
+**支持的扩展名：.jpg .jpeg .png .bmp**
+
+**输出会保留原扩展名**
+
 ## 使用方法
 
 随便新建个空文件夹，把原图和mirrorpic-creator.py扔进去然后运行就行，剩下的步骤程序里有说
