@@ -16,13 +16,19 @@ pip install Pillow
 ```
 安装即可
 
+v2.0版本额外需要[tkinterdnd2](https://pypi.org/project/tkinterdnd2/)库，使用
+```
+pip install tkinterdnd2
+```
+安装
+
 **支持的扩展名：.jpg .jpeg .png .bmp**
 
 **输出会保留原扩展名**
 
 ## 使用方法
 
-随便新建个空文件夹，把原图和mirrorpic-creator.py扔进去然后运行就行，剩下的步骤程序里有说
+随便新建个空文件夹，把mirrorpic-creator.py扔进去然后运行就行，剩下的步骤程序里有说
 
 注意只支持程序的同级文件夹中包含一张图片（文件夹的子文件夹里多少张都行反正不会读取的），大于一张的话会从这几张图片里随机选出来一张处理
 
