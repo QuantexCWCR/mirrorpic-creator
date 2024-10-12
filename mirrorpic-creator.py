@@ -57,7 +57,7 @@ try:
         height=screenheight-200
         width=height*aspectratio
     newimage=original.resize((int(width),int(height)))
-    root.geometry(f"{newimage.width+20}x{newimage.height+30}")
+    root.geometry(f"{newimage.width+20}x{newimage.height+80}")
     canvas=tkinter.Canvas(root,width=newimage.width,height=newimage.height)
     canvas.pack(side="bottom",padx=10,pady=10)
     originaltk=ImageTk.PhotoImage(newimage)
