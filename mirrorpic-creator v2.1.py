@@ -26,13 +26,11 @@ def mirror():
             last_time=0
         newheight=root.winfo_height()
         newwidth=int((newheight-100)*aspectratio+20)
-        print(newwidth-20,newheight-60)
         newimage = original.resize((int(newwidth)-20, int(newheight)-100))
         originaltk = ImageTk.PhotoImage(newimage)
         canvas.itemconfig(canvaspic,image=originaltk)
         canvas.config(width=newwidth-20,height=newheight-100)
         tutorial.config(font=("微软雅黑",int((newimage.width+20)/33)))
-        #root.update_idletasks()
         if abs(newwidth-root.winfo_width())>5 and (current_time-last_time)>0.005:
             root.geometry(f"{newwidth}x{newheight}")
             last_time=current_time
