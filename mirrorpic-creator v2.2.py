@@ -208,7 +208,7 @@ else:
 for root, dirs, files in os.walk(current_dir):
     if root == current_dir:
         for file in files:
-            if file.endswith(('.jpg', '.jpeg', '.png', '.bmp')):
+            if file.endswith(('.png', '.jpg', '.jpeg', '.gif', '.PNG', '.JPG', '.JPEG', '.GIF')):
                 original_name,extension=os.path.splitext(file)
                 original_dir = os.path.join(root, file)
                 break
