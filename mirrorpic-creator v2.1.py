@@ -1,3 +1,4 @@
+import sys
 import os
 import tkinter
 import datetime
@@ -8,7 +9,33 @@ from tkinterdnd2 import *
 imagedetected=0
 original_dir=None
 formatted_time=None
+mode=None
 savemode=0
+
+def modeselect():
+    global mode
+
+    def sel(num):
+        global mode
+        mode=num
+        root.destroy()
+
+    root=tkinter.Tk()
+    framepack=tkinter.Frame(root)
+    framepack.pack()
+    framegrid=tkinter.Frame(root)
+    framegrid.pack()
+    label=tkinter.Label(framepack,text="请选择模式")
+    label.pack()
+    button1 = tkinter.Button(framegrid, text="原图置于左侧", command=lambda: sel(1))
+    button1.grid(row=0, column=0, padx=10, pady=10)
+    button2 = tkinter.Button(framegrid, text="原图置于右侧", command=lambda: sel(2))
+    button2.grid(row=0, column=1, padx=10, pady=10)
+    button3 = tkinter.Button(framegrid, text="原图置于上方", command=lambda: sel(3))
+    button3.grid(row=1, column=0, padx=10, pady=10)
+    button4 = tkinter.Button(framegrid, text="原图置于下方", command=lambda: sel(4))
+    button4.grid(row=1, column=1, padx=10, pady=10)
+    root.mainloop()
 
 def mirror():
     global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio
@@ -83,7 +110,6 @@ def mirror():
     #canvas.pack(padx=10, pady=10)
     originaltk = ImageTk.PhotoImage(newimage)
     canvaspic=canvas.create_image(0, 0, anchor=tkinter.NW, image=originaltk)
-    root.configure(width=1000)
     canvas.bind("<Button-1>", mousepress)
     canvas.bind("<B1-Motion>", mousemove)
     canvas.bind("<ButtonRelease-1>", mouserelease)
@@ -95,10 +121,16 @@ def mirror():
     print("文件处理中...")
     if mode==1 or mode==2:
         flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
-        output = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
+        if extension==".png" or extension==".PNG":
+            output=Image.new('RGBA', (croppedimage.width * 2, croppedimage.height),(0,0,0,0))
+        else:
+            output = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
     if mode==3 or mode==4:
         flipped=croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
-        output = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
+        if extension==".png" or extension==".PNG":
+            output = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2),(0,0,0,0))
+        else:
+            output = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
     if mode == 1:
         output.paste(croppedimage, (0, 0))
         output.paste(flipped, (croppedimage.width, 0))
@@ -145,7 +177,7 @@ def imgdrop():
     def drop(event):
         global original_dir,original_name,extension,savemode
         original_dir=list(event.widget.tk.splitlist(event.data))[0]
-        if original_dir.endswith(('.png', '.jpg', '.jpeg', '.gif')):
+        if original_dir.endswith(('.png', '.jpg', '.jpeg', '.gif', '.PNG', '.JPG', '.JPEG', '.GIF')):
             original_name,extension=os.path.splitext(os.path.basename(original_dir))
             savemode=1
         else:
@@ -166,17 +198,13 @@ def imgdrop():
 
 input("使用方法:按enter先选择模式并在新弹出的窗口中选择希望用于镜像的照片，或先将希望用于镜像的照片置于本文件同级目录，完成后按enter")
 print("模式：1-原图置于左侧 2-原图置于右侧 3-原图置于上方 4-原图置于下方")
-while True:
-    try:
-        output=None
-        mode=int(input("请选择模式:"))
-        if mode==1 or mode==2 or mode==3 or mode==4:
-            break
-        else:
-            egg=int("egg")
-    except ValueError:
-        print("输入有误")
-current_dir=os.path.dirname(os.path.abspath(__file__))
+while mode not in [1,2,3,4]:
+    modeselect()
+
+if getattr(sys,'frozen',False):
+    current_dir=os.path.dirname(sys.executable)
+else:
+    current_dir=os.path.dirname(os.path.abspath(__file__))
 for root, dirs, files in os.walk(current_dir):
     if root == current_dir:
         for file in files:
