@@ -3,7 +3,10 @@ import os
 import tkinter
 import datetime
 import shutil
+
+import numpy as np
 from PIL import Image,ImageTk
+import imageio
 from tkinterdnd2 import *
 
 imagedetected=0
@@ -11,6 +14,8 @@ original_dir=None
 formatted_time=None
 mode=None
 savemode=0
+doquit=0
+changepicindi=0
 
 def modeselect():
     global mode
@@ -79,9 +84,17 @@ def mirror():
         releasey = event.y
 
     def quit():
-        global original_dir,newimage
+        global original_dir,newimage,changepicindi
         original_dir=None
         newimage=None
+        changepicindi=1
+        root.destroy()
+
+    def quit4real():
+        global doquit,original_dir,newimage
+        original_dir=None
+        newimage=None
+        doquit=1
         root.destroy()
 
     root = tkinter.Tk()
@@ -103,8 +116,12 @@ def mirror():
     root.geometry(f"{newimage.width + 20}x{newimage.height+100}")
     tutorial = tkinter.Label(root, text="请框选希望用于镜像的区域，框选完成后关闭本窗口", font=("微软雅黑",int((newimage.width+20)/33)))
     tutorial.pack(side="top", padx=10,fill=tkinter.BOTH,expand=True)
-    quitbutton=tkinter.Button(root,text="重新选择图片",command=quit)
-    quitbutton.pack()
+    framegrid = tkinter.Frame(root)
+    framegrid.pack()
+    quitbutton=tkinter.Button(framegrid,text="重新选择图片",command=quit)
+    quitbutton.grid(row=0,column=0,padx=10)
+    quit4realbutton = tkinter.Button(framegrid, text="退出", command=quit4real)
+    quit4realbutton.grid(row=0,column=1,padx=10)
     canvas = tkinter.Canvas(root, width=newimage.width, height=newimage.height)
     canvas.pack(side="bottom",padx=10,pady=10)
     #canvas.pack(padx=10, pady=10)
@@ -116,46 +133,77 @@ def mirror():
     root.bind("<Configure>",windowresize)
     root.mainloop()
 
-    croppedimage = newimage.crop((clickx, clicky, releasex, releasey))
-
     print("文件处理中...")
-    if mode==1 or mode==2:
-        flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
-        if extension==".png" or extension==".PNG":
-            output=Image.new('RGBA', (croppedimage.width * 2, croppedimage.height),(0,0,0,0))
-        else:
-            output = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
-    if mode==3 or mode==4:
-        flipped=croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
-        if extension==".png" or extension==".PNG":
-            output = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2),(0,0,0,0))
-        else:
-            output = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
-    if mode == 1:
-        output.paste(croppedimage, (0, 0))
-        output.paste(flipped, (croppedimage.width, 0))
-    elif mode == 2:
-        output.paste(flipped, (0, 0))
-        output.paste(croppedimage, (croppedimage.width, 0))
-    elif mode==3:
-        output.paste(croppedimage,(0,0))
-        output.paste(flipped,(0,croppedimage.height))
-    elif mode==4:
-        output.paste(flipped,(0,0))
-        output.paste(croppedimage,(0,croppedimage.height))
     time = datetime.datetime.now()
     formatted_time = time.strftime("%Y%m%d%H%M%S")
     os.makedirs(f"{current_dir}\outputs", exist_ok=True)
-    output.save(f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
     os.makedirs(f"{current_dir}\original_images", exist_ok=True)
+    if extension==".gif" or extension==".GIF":
+        with imageio.get_reader(original_dir) as reader:
+            outputdir=f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}"
+            duration=reader.get_meta_data()['duration']
+            fps=1000/duration
+            images=[]
+            for image in reader:
+                img=Image.fromarray(image)
+                croppedimage=img.crop((clickx, clicky, releasex, releasey))
+                if mode == 1 or mode == 2:
+                    flipped=croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
+                    frameoutput = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
+                elif mode == 3 or mode == 4:
+                    flipped=croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
+                    frameoutput = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
+                if mode == 1:
+                    frameoutput.paste(croppedimage, (0, 0))
+                    frameoutput.paste(flipped, (croppedimage.width, 0))
+                elif mode == 2:
+                    frameoutput.paste(flipped, (0, 0))
+                    frameoutput.paste(croppedimage, (croppedimage.width, 0))
+                elif mode == 3:
+                    frameoutput.paste(croppedimage, (0, 0))
+                    frameoutput.paste(flipped, (0, croppedimage.height))
+                elif mode == 4:
+                    frameoutput.paste(flipped, (0, 0))
+                    frameoutput.paste(croppedimage, (0, croppedimage.height))
+                images.append(np.array(frameoutput))
+        imageio.mimsave(outputdir,images,fps=fps,loop=0)
+    else:
+        croppedimage = newimage.crop((clickx, clicky, releasex, releasey))
+        if mode == 1 or mode == 2:
+            flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
+            if extension == ".png" or extension == ".PNG":
+                output = Image.new('RGBA', (croppedimage.width * 2, croppedimage.height), (0, 0, 0, 0))
+            else:
+                output = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
+        elif mode == 3 or mode == 4:
+            flipped = croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
+            if extension == ".png" or extension == ".PNG":
+                output = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2), (0, 0, 0, 0))
+            else:
+                output = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
+        if mode == 1:
+            output.paste(croppedimage, (0, 0))
+            output.paste(flipped, (croppedimage.width, 0))
+        elif mode == 2:
+            output.paste(flipped, (0, 0))
+            output.paste(croppedimage, (croppedimage.width, 0))
+        elif mode == 3:
+            output.paste(croppedimage, (0, 0))
+            output.paste(flipped, (0, croppedimage.height))
+        elif mode == 4:
+            output.paste(flipped, (0, 0))
+            output.paste(croppedimage, (0, croppedimage.height))
+        output.save(f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
+    print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
+
     if os.path.exists(f"{current_dir}\original_images\{original_name}{extension}"):
+        #print(formatted_time)
         egg=int("egg")
         #egg
     elif savemode==0:
         os.rename(original_dir, f"{current_dir}\original_images\{original_name}{extension}")
     elif savemode==1 and original_dir.replace("/","\\")!=f"{current_dir}\original_images\{original_name}{extension}":
         shutil.copy(original_dir,f"{current_dir}\original_images\{original_name}{extension}")
-    print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
     if savemode==0:
         print(f"已将原图移动至{current_dir}\original_images")
     elif savemode==1:
@@ -184,12 +232,20 @@ def imgdrop():
             print("不支持的文件类型")
             original_dir=None
         root.destroy()
+
+    def quit():
+        global doquit
+        doquit=1
+        root.destroy()
+
     root=TkinterDnD.Tk()
     root.title("选择照片")
     tutorial=tkinter.Label(root,text="请拖拽/粘贴照片到本窗口或直接选择照片", font=("微软雅黑", 15))
     tutorial.pack(side="top",padx=10)
     photoselect=tkinter.Label(root,height=10)
     photoselect.pack(side="bottom")
+    quitbutton = tkinter.Button(root, text="退出", command=quit)
+    quitbutton.pack()
     root.drop_target_register(DND_FILES)
     root.dnd_bind("<<DropEnter>>", dragenter)
     root.dnd_bind("<<DropLeave>>", dragleave)
@@ -219,23 +275,23 @@ while True:
         input("按enter以退出...")
         break
 
-    except NameError:
-        print("未进行裁剪")
+    #except NameError:
+        #print("未进行裁剪")
 
     except ValueError:
         if savemode == 0:
             os.rename(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
-        elif savemode == 1:
-            shutil.copy(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
-        print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
-        if savemode == 0:
             print(f"已将原图移动至{current_dir}\original_images")
         elif savemode == 1:
+            shutil.copy(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
             print(f"已将原图复制至{current_dir}\original_images")
         print(f"注意：由于{current_dir}\original_images文件夹中已存在同名文件，故将原图重命名为{original_name}_{formatted_time}{extension}后存储")
         input("按enter以退出...")
         break
 
     except AttributeError:
-        print("未找到照片")
+        if doquit==1:
+            break
+        if changepicindi==0:
+            print("未找到照片")
         imgdrop()
