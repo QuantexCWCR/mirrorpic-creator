@@ -3,7 +3,6 @@ import os
 import tkinter
 import datetime
 import shutil
-
 import numpy as np
 from PIL import Image,ImageTk
 import imageio
@@ -43,29 +42,37 @@ def modeselect():
     root.mainloop()
 
 def mirror():
-    global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio
+    import time
+
+    changepicindi=0
+
+    global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio,duration,fps
     original = Image.open(original_dir)
+    if original_dir.endswith(('.gif','.GIF')):
+        with imageio.get_reader(original_dir) as reader:
+            duration = reader.get_meta_data()['duration']
+            fps = 1000 / duration
     imagedetected = 1
     rect = None
 
     def windowresize(event):
-        global newimage,originaltk,canvaspic,last_time
-        import time
-        current_time=time.time()
-        try:
-            last_time=last_time
-        except NameError:
-            last_time=0
+        global newimage,originaltk,canvaspic,last_time,newheight,newwidth
         newheight=root.winfo_height()
         newwidth=int((newheight-100)*aspectratio+20)
-        newimage = original.resize((int(newwidth)-20, int(newheight)-100))
-        originaltk = ImageTk.PhotoImage(newimage)
-        canvas.itemconfig(canvaspic,image=originaltk)
-        canvas.config(width=newwidth-20,height=newheight-100)
-        tutorial.config(font=("微软雅黑",int((newimage.width+20)/33)))
-        if abs(newwidth-root.winfo_width())>5 and (current_time-last_time)>0.005:
+        current_time = time.time()
+        try:
+            last_time = last_time
+        except NameError:
+            last_time = 0
+        if abs(newwidth - root.winfo_width()) > 5 and (current_time - last_time) > 0.005:
             root.geometry(f"{newwidth}x{newheight}")
-            last_time=current_time
+            last_time = current_time
+        if original_dir.endswith(('.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG')):
+            newimage = original.resize((int(newwidth) - 20, int(newheight) - 100))
+            originaltk = ImageTk.PhotoImage(newimage)
+            canvas.itemconfig(canvaspic, image=originaltk)
+            canvas.config(width=newwidth - 20, height=newheight - 100)
+            tutorial.config(font=("微软雅黑", int((newimage.width + 20) / 33)))
 
     def mousepress(event):
         global clickx, clicky
@@ -125,27 +132,59 @@ def mirror():
     canvas = tkinter.Canvas(root, width=newimage.width, height=newimage.height)
     canvas.pack(side="bottom",padx=10,pady=10)
     #canvas.pack(padx=10, pady=10)
-    originaltk = ImageTk.PhotoImage(newimage)
-    canvaspic=canvas.create_image(0, 0, anchor=tkinter.NW, image=originaltk)
+    if original_dir.endswith(('.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG')):
+        originaltk = ImageTk.PhotoImage(newimage)
+        canvaspic=canvas.create_image(0, 0, anchor=tkinter.NW, image=originaltk)
+    elif original_dir.endswith(('.gif','.GIF')):
+        def animate(animateindex):
+            global canvaspic,originaltk
+            try:
+                image = frames[animateindex].resize((int(newwidth) - 20, int(newheight) - 100))
+                originaltk = ImageTk.PhotoImage(image)
+                canvas.itemconfig(canvaspic, image=originaltk)
+                canvas.config(width=newwidth - 20, height=newheight - 100)
+                tutorial.config(font=("微软雅黑", int((image.width + 20) / 33)))
+            except NameError:
+                canvas.itemconfig(canvaspic, image=framestk[animateindex])
+            animateindex+=1
+            if animateindex==len(frames):
+                animateindex=0
+            root.after(duration,lambda:animate(animateindex))
+
+        def getallframes():
+            global frames,framestk
+            with imageio.get_reader(original_dir) as reader:
+                frames=[]
+                framestk=[]
+                for image in reader:
+                    image=Image.fromarray(image)
+                    frames.append(image)
+                    imagetk=ImageTk.PhotoImage(image)
+                    framestk.append(imagetk)
+
+        getallframes()
+        canvaspic = canvas.create_image(0, 0, anchor=tkinter.NW, image=framestk[0])
+        animate(0)
+
     canvas.bind("<Button-1>", mousepress)
     canvas.bind("<B1-Motion>", mousemove)
     canvas.bind("<ButtonRelease-1>", mouserelease)
     root.bind("<Configure>",windowresize)
     root.mainloop()
 
-    print("文件处理中...")
-    time = datetime.datetime.now()
-    formatted_time = time.strftime("%Y%m%d%H%M%S")
-    os.makedirs(f"{current_dir}\outputs", exist_ok=True)
-    os.makedirs(f"{current_dir}\original_images", exist_ok=True)
+    if changepicindi==0 and doquit==0:
+        print("文件处理中...")
+        time = datetime.datetime.now()
+        formatted_time = time.strftime("%Y%m%d%H%M%S")
+        os.makedirs(f"{current_dir}\outputs", exist_ok=True)
+        os.makedirs(f"{current_dir}\original_images", exist_ok=True)
     if extension==".gif" or extension==".GIF":
         with imageio.get_reader(original_dir) as reader:
             outputdir=f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}"
-            duration=reader.get_meta_data()['duration']
-            fps=1000/duration
             images=[]
             for image in reader:
                 img=Image.fromarray(image)
+                img=img.resize((int(newwidth) - 20, int(newheight) - 100))
                 croppedimage=img.crop((clickx, clicky, releasex, releasey))
                 if mode == 1 or mode == 2:
                     flipped=croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
@@ -275,8 +314,8 @@ while True:
         input("按enter以退出...")
         break
 
-    #except NameError:
-        #print("未进行裁剪")
+    except NameError:
+        print("未进行裁剪")
 
     except ValueError:
         if savemode == 0:
@@ -289,7 +328,7 @@ while True:
         input("按enter以退出...")
         break
 
-    except AttributeError:
+    except (AttributeError,OSError):
         if doquit==1:
             break
         if changepicindi==0:
