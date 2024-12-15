@@ -16,13 +16,23 @@ pip install Pillow
 ```
 安装即可
 
-v2.0版本额外需要[tkinterdnd2](https://pypi.org/project/tkinterdnd2/)库，使用
+v2.0版本额外需要[tkinterdnd2](https://github.com/Eliav2/tkinterdnd2)库，使用
 ```
 pip install tkinterdnd2
 ```
 安装
 
-**支持的扩展名：.jpg .jpeg .png .bmp**
+v2.3版本起需要[numpy](https://numpy.org/)和[imageio](https://imageio.readthedocs.io/en/stable/)库，分别使用
+```
+pip install numpy
+```
+和
+```
+pip install imageio
+```
+安装
+
+**支持的扩展名：.jpg .jpeg .png .gif（对.gif的支持尚不完善，需使用不带有透明部分的.gif图片以达到最好效果）**
 
 **输出会保留原扩展名**
 
