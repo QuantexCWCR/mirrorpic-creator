@@ -185,7 +185,7 @@ def mirror():
             for image in reader:
                 img=Image.fromarray(image)
                 img=img.resize((int(newwidth) - 20, int(newheight) - 100))
-                croppedimage=img.crop((clickx, clicky, releasex, releasey))
+                croppedimage=img.crop((min(clickx,releasex), min(clicky,releasey), max(clickx,releasex), max(clicky,releasey)))
                 if mode == 1 or mode == 2:
                     flipped=croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
                     frameoutput = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
@@ -207,7 +207,7 @@ def mirror():
                 images.append(np.array(frameoutput))
         imageio.mimsave(outputdir,images,fps=fps,loop=0)
     else:
-        croppedimage = newimage.crop((clickx, clicky, releasex, releasey))
+        croppedimage = newimage.crop((min(clickx,releasex), min(clicky,releasey), max(clickx,releasex), max(clicky,releasey)))
         if mode == 1 or mode == 2:
             flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
             if extension == ".png" or extension == ".PNG":
