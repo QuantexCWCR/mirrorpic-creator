@@ -161,6 +161,7 @@ def mirror():
                     frames.append(image)
                     imagetk=ImageTk.PhotoImage(image)
                     framestk.append(imagetk)
+            del frames[0]
 
         getallframes()
         canvaspic = canvas.create_image(0, 0, anchor=tkinter.NW, image=framestk[0])
@@ -183,15 +184,15 @@ def mirror():
             outputdir=f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}"
             images=[]
             for image in reader:
-                img=Image.fromarray(image)
+                img=Image.fromarray(image).convert("RGBA")
                 img=img.resize((int(newwidth) - 20, int(newheight) - 100))
                 croppedimage=img.crop((min(clickx,releasex), min(clicky,releasey), max(clickx,releasex), max(clicky,releasey)))
                 if mode == 1 or mode == 2:
                     flipped=croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
-                    frameoutput = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
+                    frameoutput = Image.new('RGBA', (croppedimage.width * 2, croppedimage.height))
                 elif mode == 3 or mode == 4:
                     flipped=croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
-                    frameoutput = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
+                    frameoutput = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2))
                 if mode == 1:
                     frameoutput.paste(croppedimage, (0, 0))
                     frameoutput.paste(flipped, (croppedimage.width, 0))
@@ -205,7 +206,8 @@ def mirror():
                     frameoutput.paste(flipped, (0, 0))
                     frameoutput.paste(croppedimage, (0, croppedimage.height))
                 images.append(np.array(frameoutput))
-        imageio.mimsave(outputdir,images,fps=fps,loop=0)
+        del images[0]
+        imageio.mimsave(outputdir,images,fps=fps,loop=0,disposal=2)
     else:
         croppedimage = newimage.crop((min(clickx,releasex), min(clicky,releasey), max(clickx,releasex), max(clicky,releasey)))
         if mode == 1 or mode == 2:
