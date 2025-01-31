@@ -55,6 +55,71 @@ def mirror():
     imagedetected = 1
     rect = None
 
+    def create():
+        if extension == ".gif" or extension == ".GIF":
+            global processedimage, outputdir, processedimages
+            with imageio.get_reader(original_dir) as reader:
+                outputdir = f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}"
+                images = []
+                processedimages = []
+                for image in reader:
+                    img = Image.fromarray(image).convert("RGBA")
+                    images.append(img)
+            del images[0]
+            firstframe = Image.open(original_dir)
+            images.insert(0, firstframe)
+            for image in images:
+                image = image.resize((int(newwidth) - 20, int(newheight) - 100))
+                croppedimage = image.crop(
+                    (min(clickx, releasex), min(clicky, releasey), max(clickx, releasex), max(clicky, releasey)))
+                if mode == 1 or mode == 2:
+                    flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
+                    frameoutput = Image.new('RGBA', (croppedimage.width * 2, croppedimage.height))
+                elif mode == 3 or mode == 4:
+                    flipped = croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
+                    frameoutput = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2))
+                if mode == 1:
+                    frameoutput.paste(croppedimage, (0, 0))
+                    frameoutput.paste(flipped, (croppedimage.width, 0))
+                elif mode == 2:
+                    frameoutput.paste(flipped, (0, 0))
+                    frameoutput.paste(croppedimage, (croppedimage.width, 0))
+                elif mode == 3:
+                    frameoutput.paste(croppedimage, (0, 0))
+                    frameoutput.paste(flipped, (0, croppedimage.height))
+                elif mode == 4:
+                    frameoutput.paste(flipped, (0, 0))
+                    frameoutput.paste(croppedimage, (0, croppedimage.height))
+                processedimages.append(np.array(frameoutput))
+        else:
+            global output
+            croppedimage = newimage.crop(
+                (min(clickx, releasex), min(clicky, releasey), max(clickx, releasex), max(clicky, releasey)))
+            if mode == 1 or mode == 2:
+                flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
+                if extension == ".png" or extension == ".PNG":
+                    output = Image.new('RGBA', (croppedimage.width * 2, croppedimage.height), (0, 0, 0, 0))
+                else:
+                    output = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
+            elif mode == 3 or mode == 4:
+                flipped = croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
+                if extension == ".png" or extension == ".PNG":
+                    output = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2), (0, 0, 0, 0))
+                else:
+                    output = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
+            if mode == 1:
+                output.paste(croppedimage, (0, 0))
+                output.paste(flipped, (croppedimage.width, 0))
+            elif mode == 2:
+                output.paste(flipped, (0, 0))
+                output.paste(croppedimage, (croppedimage.width, 0))
+            elif mode == 3:
+                output.paste(croppedimage, (0, 0))
+                output.paste(flipped, (0, croppedimage.height))
+            elif mode == 4:
+                output.paste(flipped, (0, 0))
+                output.paste(croppedimage, (0, croppedimage.height))
+
     def windowresize(event):
         global newimage,originaltk,canvaspic,last_time,newheight,newwidth
         newheight=root.winfo_height()
@@ -104,6 +169,79 @@ def mirror():
         doquit=1
         root.destroy()
 
+    def preview():
+        global previewwidth,previewheight,previewframe,rootp,animating
+        try:
+            egg=clickx
+            try:
+                rootp.destroy()
+            except (NameError, tkinter.TclError):
+                pass
+            create()
+            rootp = tkinter.Toplevel()
+            rootp.title("预览")
+            screenwidth = rootp.winfo_screenwidth()
+            screenheight = rootp.winfo_screenheight()
+            rootp.maxsize = (screenwidth - 200, screenheight - 200)
+            rootp.resizable(False, False)
+            previewwidth = max(clickx, releasex) - min(clickx, releasex)
+            previewheight = max(clicky, releasey) - min(clicky, releasey)
+            if mode == 1 or mode == 2:
+                previewwidth *= 2
+            elif mode == 3 or mode == 4:
+                previewheight *= 2
+            aspectratio = previewwidth / previewheight
+            if previewwidth > screenwidth - 200:
+                previewwidth = screenwidth - 200
+                previewheight = previewwidth / aspectratio
+            if previewheight > screenheight - 200:
+                previewheight = screenheight - 200
+                previewwidth = previewheight * aspectratio
+            rootp.geometry(f"{int(previewwidth) + 20}x{int(previewheight) + 20}")
+            # label=tkinter.Label(rootp,text="将会保存的图像如下，可关闭窗口修改框选范围")
+            # label.pack()
+            canvas = tkinter.Canvas(rootp, width=previewwidth, height=previewheight)
+            canvas.pack(padx=10, pady=10)
+            # canvas.pack(padx=10, pady=10)
+            if original_dir.endswith(('.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG')):
+                newimage = output.resize((int(previewwidth), int(previewheight)))
+                originaltk = ImageTk.PhotoImage(newimage)
+                previewpic = canvas.create_image(0, 0, anchor=tkinter.NW, image=originaltk)
+            elif original_dir.endswith(('.gif', '.GIF')):
+                def animatepreview(animateindex):
+                    global previewframe, previewtk
+                    proceed = True
+                    try:
+                        image = previewframes[animateindex].resize((int(previewwidth), int(previewheight)))
+                        previewtk = ImageTk.PhotoImage(image)
+                        canvas.itemconfig(previewframe, image=previewtk)
+                    except NameError:
+                        canvas.itemconfig(previewframe, image=previewframestk[animateindex])
+                    except tkinter.TclError:
+                        proceed = False
+                    if proceed == True:
+                        animateindex += 1
+                        if animateindex == len(frames):
+                            animateindex = 0
+                        root.after(duration, lambda: animatepreview(animateindex))
+
+                def getallpreviewframes():
+                    global previewframes, previewframestk
+                    previewframes = []
+                    previewframestk = []
+                    for image in processedimages:
+                        image = Image.fromarray(image)
+                        previewframes.append(image)
+                        imagetk = ImageTk.PhotoImage(image)
+                        previewframestk.append(imagetk)
+
+                getallpreviewframes()
+                previewframe = canvas.create_image(0, 0, anchor=tkinter.NW, image=previewframestk[0])
+                animatepreview(0)
+            root.mainloop()
+        except NameError:
+            print("未框选区域")
+
     root = tkinter.Tk()
     root.title("裁剪照片")
     screenwidth = root.winfo_screenwidth()
@@ -127,8 +265,10 @@ def mirror():
     framegrid.pack()
     quitbutton=tkinter.Button(framegrid,text="重新选择图片",command=quit)
     quitbutton.grid(row=0,column=0,padx=10)
+    previewbutton=tkinter.Button(framegrid, text="预览", command=preview)
+    previewbutton.grid(row=0,column=1,padx=10)
     quit4realbutton = tkinter.Button(framegrid, text="退出", command=quit4real)
-    quit4realbutton.grid(row=0,column=1,padx=10)
+    quit4realbutton.grid(row=0,column=2,padx=10)
     canvas = tkinter.Canvas(root, width=newimage.width, height=newimage.height)
     canvas.pack(side="bottom",padx=10,pady=10)
     #canvas.pack(padx=10, pady=10)
@@ -145,7 +285,7 @@ def mirror():
                 canvas.config(width=newwidth - 20, height=newheight - 100)
                 tutorial.config(font=("微软雅黑", int((image.width + 20) / 33)))
             except NameError:
-                canvas.itemconfig(canvaspic, image=framestk[animateindex])
+                    canvas.itemconfig(canvaspic, image=framestk[animateindex])
             animateindex+=1
             if animateindex==len(frames):
                 animateindex=0
@@ -162,6 +302,11 @@ def mirror():
                     imagetk=ImageTk.PhotoImage(image)
                     framestk.append(imagetk)
             del frames[0]
+            del framestk[0]
+            firstframe=Image.open(original_dir)
+            firstframetk=ImageTk.PhotoImage(firstframe)
+            frames.insert(0,firstframe)
+            framestk.insert(0,firstframetk)
 
         getallframes()
         canvaspic = canvas.create_image(0, 0, anchor=tkinter.NW, image=framestk[0])
@@ -179,61 +324,10 @@ def mirror():
         formatted_time = time.strftime("%Y%m%d%H%M%S")
         os.makedirs(f"{current_dir}\outputs", exist_ok=True)
         os.makedirs(f"{current_dir}\original_images", exist_ok=True)
-    if extension==".gif" or extension==".GIF":
-        with imageio.get_reader(original_dir) as reader:
-            outputdir=f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}"
-            images=[]
-            for image in reader:
-                img=Image.fromarray(image).convert("RGBA")
-                img=img.resize((int(newwidth) - 20, int(newheight) - 100))
-                croppedimage=img.crop((min(clickx,releasex), min(clicky,releasey), max(clickx,releasex), max(clicky,releasey)))
-                if mode == 1 or mode == 2:
-                    flipped=croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
-                    frameoutput = Image.new('RGBA', (croppedimage.width * 2, croppedimage.height))
-                elif mode == 3 or mode == 4:
-                    flipped=croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
-                    frameoutput = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2))
-                if mode == 1:
-                    frameoutput.paste(croppedimage, (0, 0))
-                    frameoutput.paste(flipped, (croppedimage.width, 0))
-                elif mode == 2:
-                    frameoutput.paste(flipped, (0, 0))
-                    frameoutput.paste(croppedimage, (croppedimage.width, 0))
-                elif mode == 3:
-                    frameoutput.paste(croppedimage, (0, 0))
-                    frameoutput.paste(flipped, (0, croppedimage.height))
-                elif mode == 4:
-                    frameoutput.paste(flipped, (0, 0))
-                    frameoutput.paste(croppedimage, (0, croppedimage.height))
-                images.append(np.array(frameoutput))
-        del images[0]
-        imageio.mimsave(outputdir,images,fps=fps,loop=0,disposal=2)
+    create()
+    if extension == ".gif" or extension == ".GIF":
+        imageio.mimsave(outputdir, processedimages, fps=fps, loop=0, disposal=2)
     else:
-        croppedimage = newimage.crop((min(clickx,releasex), min(clicky,releasey), max(clickx,releasex), max(clicky,releasey)))
-        if mode == 1 or mode == 2:
-            flipped = croppedimage.transpose(Image.FLIP_LEFT_RIGHT)
-            if extension == ".png" or extension == ".PNG":
-                output = Image.new('RGBA', (croppedimage.width * 2, croppedimage.height), (0, 0, 0, 0))
-            else:
-                output = Image.new('RGB', (croppedimage.width * 2, croppedimage.height))
-        elif mode == 3 or mode == 4:
-            flipped = croppedimage.transpose(Image.FLIP_TOP_BOTTOM)
-            if extension == ".png" or extension == ".PNG":
-                output = Image.new('RGBA', (croppedimage.width, croppedimage.height * 2), (0, 0, 0, 0))
-            else:
-                output = Image.new('RGB', (croppedimage.width, croppedimage.height * 2))
-        if mode == 1:
-            output.paste(croppedimage, (0, 0))
-            output.paste(flipped, (croppedimage.width, 0))
-        elif mode == 2:
-            output.paste(flipped, (0, 0))
-            output.paste(croppedimage, (croppedimage.width, 0))
-        elif mode == 3:
-            output.paste(croppedimage, (0, 0))
-            output.paste(flipped, (0, croppedimage.height))
-        elif mode == 4:
-            output.paste(flipped, (0, 0))
-            output.paste(croppedimage, (0, croppedimage.height))
         output.save(f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
     print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
 
@@ -251,7 +345,7 @@ def mirror():
         print(f"已将原图复制至{current_dir}\original_images")
 
 def imgdrop():
-    global original,original_dir,original_name,extension,savemode
+    global original_dir,original_name,extension,savemode
 
     def dragenter(event):
         event.widget.config(cursor="hand2")
