@@ -14,7 +14,8 @@ formatted_time=None
 mode=None
 savemode=0
 doquit=0
-changepicindi=0
+#changepicindi=0
+#changemodeindi=0
 
 def modeselect():
     global mode
@@ -43,10 +44,11 @@ def modeselect():
 
 def mirror():
     import time
+    global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio,duration,fps,changepicindi,changemodeindi
 
     changepicindi=0
+    changemodeindi=0
 
-    global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio,duration,fps
     original = Image.open(original_dir)
     if original_dir.endswith(('.gif','.GIF')):
         with imageio.get_reader(original_dir) as reader:
@@ -242,6 +244,12 @@ def mirror():
         except NameError:
             print("未框选区域")
 
+    def reselmode():
+        global mode,changemodeindi
+        mode=None
+        changemodeindi=1
+        root.destroy()
+
     root = tkinter.Tk()
     root.title("裁剪照片")
     screenwidth = root.winfo_screenwidth()
@@ -265,10 +273,12 @@ def mirror():
     framegrid.pack()
     quitbutton=tkinter.Button(framegrid,text="重新选择图片",command=quit)
     quitbutton.grid(row=0,column=0,padx=10)
+    reselmodebutton=tkinter.Button(framegrid,text="重新选择模式",command=reselmode)
+    reselmodebutton.grid(row=0,column=1,padx=10)
     previewbutton=tkinter.Button(framegrid, text="预览", command=preview)
-    previewbutton.grid(row=0,column=1,padx=10)
+    previewbutton.grid(row=0,column=2,padx=10)
     quit4realbutton = tkinter.Button(framegrid, text="退出", command=quit4real)
-    quit4realbutton.grid(row=0,column=2,padx=10)
+    quit4realbutton.grid(row=0,column=3,padx=10)
     canvas = tkinter.Canvas(root, width=newimage.width, height=newimage.height)
     canvas.pack(side="bottom",padx=10,pady=10)
     #canvas.pack(padx=10, pady=10)
@@ -317,6 +327,9 @@ def mirror():
     canvas.bind("<ButtonRelease-1>", mouserelease)
     root.bind("<Configure>",windowresize)
     root.mainloop()
+
+    if changemodeindi==1:
+        egg=int(egg)
 
     if changepicindi==0 and doquit==0:
         print("文件处理中...")
@@ -388,9 +401,7 @@ def imgdrop():
     root.mainloop()
 
 input("使用方法:按enter先选择模式并在新弹出的窗口中选择希望用于镜像的照片，或先将希望用于镜像的照片置于本文件同级目录，完成后按enter")
-print("模式：1-原图置于左侧 2-原图置于右侧 3-原图置于上方 4-原图置于下方")
-while mode not in [1,2,3,4]:
-    modeselect()
+#print("模式：1-原图置于左侧 2-原图置于右侧 3-原图置于上方 4-原图置于下方")
 
 if getattr(sys,'frozen',False):
     current_dir=os.path.dirname(sys.executable)
@@ -406,12 +417,16 @@ for root, dirs, files in os.walk(current_dir):
 
 while True:
     try:
+        while mode not in [1, 2, 3, 4]:
+            modeselect()
         mirror()
         input("按enter以退出...")
         break
 
     except NameError:
-        print("未进行裁剪")
+        if changemodeindi==0:
+            print("未进行裁剪")
+        changemodeindi=0
 
     except ValueError:
         if savemode == 0:
