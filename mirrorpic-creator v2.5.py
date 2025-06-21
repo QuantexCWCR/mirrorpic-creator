@@ -14,6 +14,8 @@ formatted_time=None
 mode=None
 savemode=0
 doquit=0
+swbtimes=1
+filesaved=0
 #changepicindi=0
 #changemodeindi=0
 
@@ -44,7 +46,7 @@ def modeselect():
 
 def mirror():
     import time
-    global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio,duration,fps,changepicindi,changemodeindi
+    global original,imagedetected,output,rect,formatted_time,original_dir,canvaspic,newimage,aspectratio,duration,fps,changepicindi,changemodeindi,previousheight
 
     changepicindi=0
     changemodeindi=0
@@ -122,24 +124,67 @@ def mirror():
                 output.paste(flipped, (0, 0))
                 output.paste(croppedimage, (0, croppedimage.height))
 
+    def save():
+        global formatted_time
+
+        time = datetime.datetime.now()
+        formatted_time = time.strftime("%Y%m%d%H%M%S")
+        os.makedirs(f"{current_dir}\outputs", exist_ok=True)
+        os.makedirs(f"{current_dir}\original_images", exist_ok=True)
+
+        create()
+        if extension == ".gif" or extension == ".GIF":
+            imageio.mimsave(outputdir, processedimages, fps=fps, loop=0, disposal=2)
+        else:
+            output.save(f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
+        print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
+
+        if os.path.exists(f"{current_dir}\original_images\{original_name}{extension}"):
+            # print(formatted_time)
+            egg = int("egg")
+            # egg
+        elif savemode == 0:
+            os.rename(original_dir, f"{current_dir}\original_images\{original_name}{extension}")
+        elif savemode == 1 and original_dir.replace("/",
+                                                    "\\") != f"{current_dir}\original_images\{original_name}{extension}":
+            shutil.copy(original_dir, f"{current_dir}\original_images\{original_name}{extension}")
+        if savemode == 0:
+            print(f"已将原图移动至{current_dir}\original_images")
+        elif savemode == 1:
+            print(f"已将原图复制至{current_dir}\original_images")
+
     def windowresize(event):
-        global newimage,originaltk,canvaspic,last_time,newheight,newwidth
+        global newimage,originaltk,canvaspic,last_time,newheight,newwidth,rect,releasex,releasey,previousheight
         newheight=root.winfo_height()
         newwidth=int((newheight-100)*aspectratio+20)
+        if previousheight!=newheight:
+            if rect:
+                canvas.delete(rect)
+            try:
+                del releasex, releasey
+            except NameError:
+                pass
         current_time = time.time()
         try:
             last_time = last_time
         except NameError:
             last_time = 0
         if abs(newwidth - root.winfo_width()) > 5 and (current_time - last_time) > 0.005:
-            root.geometry(f"{newwidth}x{newheight}")
-            last_time = current_time
+            try:
+                root.geometry(f"{newwidth}x{newheight}")
+                last_time = current_time
+            except tkinter.TclError:
+                pass
         if original_dir.endswith(('.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG')):
-            newimage = original.resize((int(newwidth) - 20, int(newheight) - 100))
+            try:
+                newimage = original.resize((int(newwidth) - 20, int(newheight) - 100))
+            except ValueError:
+                pass
             originaltk = ImageTk.PhotoImage(newimage)
             canvas.itemconfig(canvaspic, image=originaltk)
             canvas.config(width=newwidth - 20, height=newheight - 100)
             tutorial.config(font=("微软雅黑", int((newimage.width + 20) / 33)))
+        previousheight=newheight
 
     def mousepress(event):
         global clickx, clicky
@@ -150,12 +195,32 @@ def mirror():
         global rect
         if rect:
             canvas.delete(rect)
-        rect = canvas.create_rectangle(clickx, clicky, event.x, event.y, outline='red')
+        dispx=event.x
+        dispy=event.y
+        if event.x<2:
+            dispx=2
+        if event.y<2:
+            dispy=2
+        if event.x>int(newwidth)-23:
+            dispx=int(newwidth)-23
+        if event.y>int(newheight)-101:
+            dispy=int(newheight)-101
+        rect = canvas.create_rectangle(clickx, clicky, dispx, dispy, outline='red')
+        #print(event.x)
 
     def mouserelease(event):
-        global releasex, releasey
+        global releasex, releasey, filesaved
+        filesaved = 0
         releasex = event.x
         releasey = event.y
+        if event.x<0:
+            releasex=0
+        if event.y<0:
+            releasey=0
+        if event.x>newwidth-20:
+            releasex=newwidth-20
+        if event.y>newheight-100:
+            releasey=newheight-100
 
     def quit():
         global original_dir,newimage,changepicindi
@@ -179,6 +244,33 @@ def mirror():
                 rootp.destroy()
             except (NameError, tkinter.TclError):
                 pass
+
+            def swb():
+                global swbtimes,filesaved
+                try:
+                    save()
+                    #pass
+                except ValueError:
+                    if swbtimes==1:
+                        if savemode == 0:
+                            os.rename(original_dir,
+                                      f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
+                            print(f"已将原图移动至{current_dir}\original_images")
+                        elif savemode == 1:
+                            shutil.copy(original_dir,
+                                        f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
+                            print(f"已将原图复制至{current_dir}\original_images")
+                        print(
+                            f"注意：由于{current_dir}\original_images文件夹中已存在同名文件，故将原图重命名为{original_name}_{formatted_time}{extension}后存储")
+                if swbtimes==1:
+                    swbtext=""
+                else:
+                    swbtext=f"({swbtimes})"
+                #print(swbtimes)
+                showsaved.config(text=f"保存成功!{swbtext}")
+                swbtimes+=1
+                filesaved=1
+
             create()
             rootp = tkinter.Toplevel()
             rootp.title("预览")
@@ -199,11 +291,15 @@ def mirror():
             if previewheight > screenheight - 200:
                 previewheight = screenheight - 200
                 previewwidth = previewheight * aspectratio
-            rootp.geometry(f"{int(previewwidth) + 20}x{int(previewheight) + 20}")
+            rootp.geometry(f"{int(previewwidth) + 20}x{int(previewheight) + 90}")
             # label=tkinter.Label(rootp,text="将会保存的图像如下，可关闭窗口修改框选范围")
             # label.pack()
+            savebutton=tkinter.Button(rootp,text="保存",command=swb)
+            savebutton.pack()
             canvas = tkinter.Canvas(rootp, width=previewwidth, height=previewheight)
             canvas.pack(padx=10, pady=10)
+            showsaved=tkinter.Label(rootp,text="",font=("微软雅黑",15))
+            showsaved.pack()
             # canvas.pack(padx=10, pady=10)
             if original_dir.endswith(('.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG')):
                 newimage = output.resize((int(previewwidth), int(previewheight)))
@@ -267,6 +363,7 @@ def mirror():
         width = height * aspectratio
     newimage = original.resize((int(width), int(height)))
     root.geometry(f"{newimage.width + 20}x{newimage.height+100}")
+    previousheight=root.winfo_height()
     tutorial = tkinter.Label(root, text="请框选希望用于镜像的区域，框选完成后关闭本窗口", font=("微软雅黑",int((newimage.width+20)/33)))
     tutorial.pack(side="top", padx=10,fill=tkinter.BOTH,expand=True)
     framegrid = tkinter.Frame(root)
@@ -295,7 +392,9 @@ def mirror():
                 canvas.config(width=newwidth - 20, height=newheight - 100)
                 tutorial.config(font=("微软雅黑", int((image.width + 20) / 33)))
             except NameError:
-                    canvas.itemconfig(canvaspic, image=framestk[animateindex])
+                canvas.itemconfig(canvaspic, image=framestk[animateindex])
+            except ValueError:
+                pass
             animateindex+=1
             if animateindex==len(frames):
                 animateindex=0
@@ -333,32 +432,14 @@ def mirror():
 
     if changepicindi==0 and doquit==0:
         print("文件处理中...")
-        time = datetime.datetime.now()
-        formatted_time = time.strftime("%Y%m%d%H%M%S")
-        os.makedirs(f"{current_dir}\outputs", exist_ok=True)
-        os.makedirs(f"{current_dir}\original_images", exist_ok=True)
-    create()
-    if extension == ".gif" or extension == ".GIF":
-        imageio.mimsave(outputdir, processedimages, fps=fps, loop=0, disposal=2)
-    else:
-        output.save(f"{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
-    print(f"已将输出存储为{current_dir}\outputs\{original_name}_output_{formatted_time}{extension}")
 
-    if os.path.exists(f"{current_dir}\original_images\{original_name}{extension}"):
-        #print(formatted_time)
-        egg=int("egg")
-        #egg
-    elif savemode==0:
-        os.rename(original_dir, f"{current_dir}\original_images\{original_name}{extension}")
-    elif savemode==1 and original_dir.replace("/","\\")!=f"{current_dir}\original_images\{original_name}{extension}":
-        shutil.copy(original_dir,f"{current_dir}\original_images\{original_name}{extension}")
-    if savemode==0:
-        print(f"已将原图移动至{current_dir}\original_images")
-    elif savemode==1:
-        print(f"已将原图复制至{current_dir}\original_images")
+    if filesaved==0:
+        save()
 
 def imgdrop():
-    global original_dir,original_name,extension,savemode
+    global original_dir,original_name,extension,savemode,swbtimes
+
+    swbtimes=1
 
     def dragenter(event):
         event.widget.config(cursor="hand2")
@@ -429,13 +510,15 @@ while True:
         changemodeindi=0
 
     except ValueError:
-        if savemode == 0:
-            os.rename(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
-            print(f"已将原图移动至{current_dir}\original_images")
-        elif savemode == 1:
-            shutil.copy(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
-            print(f"已将原图复制至{current_dir}\original_images")
-        print(f"注意：由于{current_dir}\original_images文件夹中已存在同名文件，故将原图重命名为{original_name}_{formatted_time}{extension}后存储")
+        if swbtimes==1:
+            if savemode == 0:
+                os.rename(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
+                print(f"已将原图移动至{current_dir}\original_images")
+            elif savemode == 1:
+                shutil.copy(original_dir, f"{current_dir}\original_images\{original_name}_{formatted_time}{extension}")
+                print(f"已将原图复制至{current_dir}\original_images")
+            print(
+                f"注意：由于{current_dir}\original_images文件夹中已存在同名文件，故将原图重命名为{original_name}_{formatted_time}{extension}后存储")
         input("按enter以退出...")
         break
 
